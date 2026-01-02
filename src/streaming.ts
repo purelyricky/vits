@@ -79,21 +79,11 @@ export async function predictStream(
 		const noiseScale = modelConfig.inference.noise_scale;
 		const lengthScale = modelConfig.inference.length_scale;
 		const noiseW = modelConfig.inference.noise_w;
+		const espeakVoice = modelConfig.espeak.voice;
 
 		// Load ONNX model
 		const modelBlob = await getBlob(`${HF_BASE}/${path}`, onProgress);
 		const session = await ort.InferenceSession.create(await modelBlob.arrayBuffer());
-
-		// Create phonemizer instance
-		const phonemizer = await piperModule.createPiperPhonemize({
-			print: () => {},
-			printErr: (msg: string) => console.error('Phonemizer error:', msg),
-			locateFile: (url: string) => {
-				if (url.endsWith('.wasm')) return `${WASM_BASE}.wasm`;
-				if (url.endsWith('.data')) return `${WASM_BASE}.data`;
-				return url;
-			}
-		});
 
 		// Create text chunks
 		const chunkSize = config.chunkSize ?? 1;
@@ -118,12 +108,12 @@ export async function predictStream(
 
 			const chunkStart = performance.now();
 
-			// Phonemize
+			// Phonemize - create fresh phonemizer for each chunk to properly capture output
 			const phonemeStart = performance.now();
 			const phonemeIds = await phonemizeText(
-				phonemizer,
+				piperModule,
 				textChunk.text,
-				modelConfig.espeak.voice
+				espeakVoice
 			);
 			const phonemizeTime = performance.now() - phonemeStart;
 
@@ -293,42 +283,45 @@ export function getStreamingSession(): StreamingSession | null {
 
 /**
  * Phonemize text using piper-phonemize WASM
+ * Creates a fresh phonemizer instance for each call to properly capture output
+ * (Emscripten modules bind callbacks at initialization, not dynamically)
  */
 async function phonemizeText(
-	phonemizer: any,
+	module: typeof import('./piper.js'),
 	text: string,
 	espeakVoice: string
 ): Promise<number[]> {
-	return new Promise((resolve, reject) => {
-		const input = JSON.stringify([{ text: text.trim() }]);
-		let resolved = false;
+	const input = JSON.stringify([{ text: text.trim() }]);
 
-		// Override print to capture output
-		const originalPrint = phonemizer.print;
-		phonemizer.print = (data: string) => {
-			if (!resolved) {
-				resolved = true;
-				try {
-					resolve(JSON.parse(data).phoneme_ids);
-				} catch (e) {
-					reject(new Error(`Failed to parse phoneme output: ${e}`));
-				}
-			}
-		};
-
+	return new Promise(async (resolve, reject) => {
 		try {
+			const phonemizer = await module.createPiperPhonemize({
+				print: (data: string) => {
+					try {
+						const parsed = JSON.parse(data);
+						resolve(parsed.phoneme_ids);
+					} catch (e) {
+						reject(new Error(`Failed to parse phoneme output: ${e}`));
+					}
+				},
+				printErr: (message: string) => {
+					reject(new Error(`Phonemizer error: ${message}`));
+				},
+				locateFile: (url: string) => {
+					if (url.endsWith('.wasm')) return `${WASM_BASE}.wasm`;
+					if (url.endsWith('.data')) return `${WASM_BASE}.data`;
+					return url;
+				}
+			});
+
 			phonemizer.callMain([
 				'-l', espeakVoice,
 				'--input', input,
 				'--espeak_data', '/espeak-ng-data'
 			]);
 		} catch (e) {
-			if (!resolved) {
-				reject(e);
-			}
+			reject(e);
 		}
-
-		phonemizer.print = originalPrint;
 	});
 }
 
