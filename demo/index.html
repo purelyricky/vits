@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>StreamSpeech Demo - Low-Latency Browser TTS</title>
+    <style>
+        :root {
+            --primary: #2563eb;
+            --primary-dark: #1d4ed8;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --bg: #0f172a;
+            --surface: #1e293b;
+            --surface-2: #334155;
+            --text: #f1f5f9;
+            --text-muted: #94a3b8;
+            --border: #475569;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 3rem;
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+            background: linear-gradient(135deg, #60a5fa, #a78bfa);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .subtitle {
+            color: var(--text-muted);
+            font-size: 1.1rem;
+        }
+
+        .badge {
+            display: inline-block;
+            background: var(--surface);
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            font-size: 0.875rem;
+            color: var(--success);
+            margin-top: 1rem;
+        }
+
+        .card {
+            background: var(--surface);
+            border-radius: 1rem;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            border: 1px solid var(--border);
+        }
+
+        .card-title {
+            font-size: 1rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            color: var(--text);
+        }
+
+        .input-group {
+            margin-bottom: 1rem;
+        }
+
+        label {
+            display: block;
+            font-size: 0.875rem;
+            font-weight: 500;
+            margin-bottom: 0.5rem;
+            color: var(--text-muted);
+        }
+
+        textarea {
+            width: 100%;
+            min-height: 120px;
+            padding: 0.75rem;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 0.5rem;
+            color: var(--text);
+            font-size: 1rem;
+            font-family: inherit;
+            resize: vertical;
+        }
+
+        textarea:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.2);
+        }
+
+        select {
+            width: 100%;
+            padding: 0.75rem;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 0.5rem;
+            color: var(--text);
+            font-size: 1rem;
+            cursor: pointer;
+        }
+
+        select:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 1rem;
+            margin-top: 1.5rem;
+        }
+
+        button {
+            flex: 1;
+            padding: 0.875rem 1.5rem;
+            border: none;
+            border-radius: 0.5rem;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            background: var(--primary-dark);
+        }
+
+        .btn-secondary {
+            background: var(--surface-2);
+            color: var(--text);
+        }
+
+        .btn-secondary:hover:not(:disabled) {
+            background: var(--border);
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 1rem;
+        }
+
+        .metric {
+            background: var(--bg);
+            padding: 1rem;
+            border-radius: 0.5rem;
+            text-align: center;
+        }
+
+        .metric-value {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--primary);
+        }
+
+        .metric-label {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .chunks-container {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .chunk {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            padding: 0.75rem;
+            background: var(--bg);
+            border-radius: 0.5rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .chunk-index {
+            width: 2rem;
+            height: 2rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--surface-2);
+            border-radius: 50%;
+            font-size: 0.875rem;
+            font-weight: 600;
+        }
+
+        .chunk-info {
+            flex: 1;
+        }
+
+        .chunk-text {
+            font-size: 0.875rem;
+            color: var(--text);
+            margin-bottom: 0.25rem;
+        }
+
+        .chunk-metrics {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
+
+        .chunk-play {
+            padding: 0.5rem;
+            background: var(--primary);
+            border: none;
+            border-radius: 50%;
+            color: white;
+            cursor: pointer;
+            width: 2rem;
+            height: 2rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .progress-bar {
+            height: 4px;
+            background: var(--surface-2);
+            border-radius: 2px;
+            margin-top: 1rem;
+            overflow: hidden;
+        }
+
+        .progress-bar-fill {
+            height: 100%;
+            background: var(--primary);
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+
+        .status {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.75rem 1rem;
+            background: var(--bg);
+            border-radius: 0.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--text-muted);
+        }
+
+        .status-dot.active {
+            background: var(--success);
+            animation: pulse 1s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .comparison {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+        }
+
+        .comparison-card {
+            background: var(--bg);
+            padding: 1rem;
+            border-radius: 0.5rem;
+            text-align: center;
+        }
+
+        .comparison-title {
+            font-size: 0.875rem;
+            color: var(--text-muted);
+            margin-bottom: 0.5rem;
+        }
+
+        .comparison-value {
+            font-size: 1.25rem;
+            font-weight: 600;
+        }
+
+        .comparison-value.better {
+            color: var(--success);
+        }
+
+        footer {
+            text-align: center;
+            padding: 2rem 0;
+            color: var(--text-muted);
+            font-size: 0.875rem;
+        }
+
+        footer a {
+            color: var(--primary);
+            text-decoration: none;
+        }
+
+        footer a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>StreamSpeech</h1>
+            <p class="subtitle">Low-Latency Streaming Text-to-Speech in the Browser</p>
+            <span class="badge">Research Demo</span>
+        </header>
+
+        <div class="card">
+            <h2 class="card-title">Input</h2>
+            <div class="input-group">
+                <label for="text">Text to synthesize</label>
+                <textarea id="text" placeholder="Enter text to convert to speech...">The quick brown fox jumps over the lazy dog. This sentence demonstrates streaming text-to-speech synthesis. Each sentence is processed incrementally, reducing time to first audio significantly compared to batch processing.</textarea>
+            </div>
+            <div class="input-group">
+                <label for="voice">Voice</label>
+                <select id="voice">
+                    <option value="en_US-amy-medium">Amy (US English, Medium)</option>
+                    <option value="en_US-hfc_female-medium" selected>HFC Female (US English, Medium)</option>
+                    <option value="en_US-lessac-medium">Lessac (US English, Medium)</option>
+                    <option value="en_GB-cori-medium">Cori (UK English, Medium)</option>
+                    <option value="en_GB-alba-medium">Alba (UK English, Medium)</option>
+                    <option value="de_DE-thorsten-medium">Thorsten (German, Medium)</option>
+                    <option value="fr_FR-siwis-medium">Siwis (French, Medium)</option>
+                    <option value="es_ES-davefx-medium">Davefx (Spanish, Medium)</option>
+                </select>
+            </div>
+            <div class="btn-group">
+                <button id="streamBtn" class="btn-primary">Stream Synthesis</button>
+                <button id="batchBtn" class="btn-secondary">Batch Synthesis</button>
+            </div>
+            <div class="progress-bar">
+                <div class="progress-bar-fill" id="progress"></div>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2 class="card-title">Performance Comparison</h2>
+            <div class="comparison">
+                <div class="comparison-card">
+                    <div class="comparison-title">Streaming TTFA</div>
+                    <div class="comparison-value better" id="streamTTFA">--</div>
+                </div>
+                <div class="comparison-card">
+                    <div class="comparison-title">Batch TTFA</div>
+                    <div class="comparison-value" id="batchTTFA">--</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2 class="card-title">Metrics</h2>
+            <div class="status">
+                <div class="status-dot" id="statusDot"></div>
+                <span id="statusText">Ready</span>
+            </div>
+            <div class="metrics-grid">
+                <div class="metric">
+                    <div class="metric-value" id="ttfa">--</div>
+                    <div class="metric-label">Time to First Audio</div>
+                </div>
+                <div class="metric">
+                    <div class="metric-value" id="totalTime">--</div>
+                    <div class="metric-label">Total Time</div>
+                </div>
+                <div class="metric">
+                    <div class="metric-value" id="chunks">--</div>
+                    <div class="metric-label">Chunks</div>
+                </div>
+                <div class="metric">
+                    <div class="metric-value" id="rtf">--</div>
+                    <div class="metric-label">Real-time Factor</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2 class="card-title">Audio Chunks</h2>
+            <div class="chunks-container" id="chunksContainer">
+                <p style="color: var(--text-muted); text-align: center; padding: 2rem;">
+                    Chunks will appear here as they are synthesized...
+                </p>
+            </div>
+        </div>
+
+        <footer>
+            <p>StreamSpeech: A research project on low-latency browser-based TTS</p>
+            <p>Built on <a href="https://github.com/rhasspy/piper">Piper</a> and <a href="https://onnxruntime.ai/">ONNX Runtime Web</a></p>
+        </footer>
+    </div>
+
+    <script type="module" src="./main.ts"></script>
+</body>
+</html>

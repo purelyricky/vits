@@ -2,12 +2,50 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Vite + TS</title>
+    <title>StreamSpeech - Low-Latency Browser TTS</title>
+    <style>
+      body {
+        font-family: system-ui, sans-serif;
+        background: #0f172a;
+        color: #f1f5f9;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        min-height: 100vh;
+        margin: 0;
+        text-align: center;
+      }
+      h1 {
+        font-size: 3rem;
+        background: linear-gradient(135deg, #60a5fa, #a78bfa);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        margin-bottom: 1rem;
+      }
+      p { color: #94a3b8; margin-bottom: 2rem; }
+      .links { display: flex; gap: 1rem; }
+      a {
+        background: #2563eb;
+        color: white;
+        padding: 0.75rem 1.5rem;
+        border-radius: 0.5rem;
+        text-decoration: none;
+        font-weight: 500;
+      }
+      a:hover { background: #1d4ed8; }
+      a.secondary { background: #334155; }
+      a.secondary:hover { background: #475569; }
+    </style>
   </head>
   <body>
-    <div id="app"></div>
-    <script type="module" src="/example/index.ts"></script>
+    <h1>StreamSpeech</h1>
+    <p>Low-Latency Streaming Text-to-Speech in the Browser</p>
+    <div class="links">
+      <a href="/demo/">Interactive Demo</a>
+      <a href="/benchmarks/" class="secondary">Benchmarks</a>
+    </div>
   </body>
 </html>

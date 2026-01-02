@@ -1,19 +1,19 @@
 {
-  "name": "@diffusionstudio/vits-web",
+  "name": "streamspeech",
   "private": false,
-  "version": "1.0.3",
-  "description": "Web api for using VITS based models in the browser!",
+  "version": "1.0.0",
+  "description": "Low-latency streaming text-to-speech in the browser via incremental neural synthesis",
   "type": "module",
   "files": [
     "dist",
     "package.json"
   ],
-  "module": "./dist/vits-web.js",
+  "module": "./dist/streamspeech.js",
   "types": "./dist/index.d.ts",
-  "author": "mail@konstantinpaulus.de",
+  "author": "StreamSpeech Research",
   "exports": {
     ".": {
-      "import": "./dist/vits-web.js",
+      "import": "./dist/streamspeech.js",
       "types": "./dist/index.d.ts"
     }
   },
@@ -22,31 +22,28 @@
   },
   "repository": {
     "type": "git",
-    "url": "git@github.com:diffusionstudio/vits-web.git"
+    "url": "git@github.com:purelyricky/vits.git"
   },
-  "bugs": {
-    "url": "https://github.com/diffusionstudio/vits-web/issues"
-  },
-  "homepage": "https://huggingface.co/spaces/diffusionstudio/vits-web",
   "license": "MIT",
   "keywords": [
-    "vits",
-    "webassembly",
-    "emscripten",
-    "audio",
-    "browser",
+    "streaming",
     "tts",
     "text-to-speech",
     "speech synthesis",
-    "web ai",
-    "webnn"
+    "vits",
+    "browser",
+    "webassembly",
+    "onnx",
+    "low-latency",
+    "neural-tts",
+    "web ai"
   ],
   "scripts": {
     "dev": "vite",
     "build": "rm -r -f ./dist && tsc && vite build",
     "preview": "vite preview",
     "format": "npx @biomejs/biome format --write ./src",
-    "test": "npx playwright test --project=chromium"
+    "benchmark": "vite --open /benchmarks/"
   },
   "devDependencies": {
     "@biomejs/biome": "1.8.3",

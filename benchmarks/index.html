@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>StreamSpeech Benchmark Suite</title>
+    <style>
+        :root {
+            --bg: #0f172a;
+            --surface: #1e293b;
+            --text: #f1f5f9;
+            --text-muted: #94a3b8;
+            --primary: #2563eb;
+            --success: #10b981;
+        }
+
+        body {
+            font-family: 'Inter', system-ui, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            padding: 2rem;
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+
+        h1 { margin-bottom: 0.5rem; }
+        .subtitle { color: var(--text-muted); margin-bottom: 2rem; }
+
+        .card {
+            background: var(--surface);
+            border-radius: 0.75rem;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        button {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.5rem;
+            font-size: 1rem;
+            cursor: pointer;
+        }
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .progress {
+            height: 6px;
+            background: var(--bg);
+            border-radius: 3px;
+            margin: 1rem 0;
+            overflow: hidden;
+        }
+        .progress-fill {
+            height: 100%;
+            background: var(--primary);
+            width: 0%;
+            transition: width 0.3s;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 1rem 0;
+        }
+        th, td {
+            padding: 0.75rem;
+            text-align: left;
+            border-bottom: 1px solid var(--bg);
+        }
+        th { color: var(--text-muted); font-weight: 500; }
+
+        .metric-row {
+            display: flex;
+            gap: 2rem;
+            margin: 1rem 0;
+        }
+        .metric {
+            flex: 1;
+            text-align: center;
+        }
+        .metric-value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--success);
+        }
+        .metric-label {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+        }
+
+        pre {
+            background: var(--bg);
+            padding: 1rem;
+            border-radius: 0.5rem;
+            overflow-x: auto;
+            font-size: 0.875rem;
+        }
+
+        #status { color: var(--text-muted); }
+    </style>
+</head>
+<body>
+    <h1>StreamSpeech Benchmark Suite</h1>
+    <p class="subtitle">Measure streaming vs batch TTS performance</p>
+
+    <div class="card">
+        <h2>Run Benchmarks</h2>
+        <p>This will run 5 tests comparing streaming and batch synthesis across different text lengths.</p>
+        <div style="margin: 1rem 0;">
+            <label for="voice">Voice: </label>
+            <select id="voice" style="padding: 0.5rem; background: var(--bg); color: var(--text); border: 1px solid var(--text-muted); border-radius: 0.25rem;">
+                <option value="en_US-hfc_female-medium">HFC Female (US)</option>
+                <option value="en_US-amy-medium">Amy (US)</option>
+                <option value="en_GB-cori-medium">Cori (UK)</option>
+            </select>
+        </div>
+        <button id="runBtn">Run Benchmark Suite</button>
+        <div class="progress">
+            <div class="progress-fill" id="progress"></div>
+        </div>
+        <p id="status">Ready to run benchmarks</p>
+    </div>
+
+    <div class="card" id="summaryCard" style="display: none;">
+        <h2>Summary</h2>
+        <div class="metric-row">
+            <div class="metric">
+                <div class="metric-value" id="avgImprovement">--</div>
+                <div class="metric-label">Avg TTFA Reduction</div>
+            </div>
+            <div class="metric">
+                <div class="metric-value" id="avgPercent">--</div>
+                <div class="metric-label">Avg Improvement</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card" id="resultsCard" style="display: none;">
+        <h2>Results</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Test</th>
+                    <th>Words</th>
+                    <th>Stream TTFA</th>
+                    <th>Batch Time</th>
+                    <th>Improvement</th>
+                </tr>
+            </thead>
+            <tbody id="resultsBody"></tbody>
+        </table>
+    </div>
+
+    <div class="card" id="exportCard" style="display: none;">
+        <h2>Export</h2>
+        <button id="copyMd" style="margin-right: 0.5rem;">Copy Markdown</button>
+        <button id="copyJson">Copy JSON</button>
+        <pre id="markdown" style="margin-top: 1rem;"></pre>
+    </div>
+
+    <script type="module">
+        import { runBenchmarkSuite, formatResultsMarkdown, exportResultsJSON } from './latency-suite.ts';
+
+        const runBtn = document.getElementById('runBtn');
+        const progress = document.getElementById('progress');
+        const status = document.getElementById('status');
+        const voiceSelect = document.getElementById('voice');
+
+        let suiteResults = null;
+
+        runBtn.addEventListener('click', async () => {
+            runBtn.disabled = true;
+            progress.style.width = '0%';
+
+            try {
+                suiteResults = await runBenchmarkSuite(
+                    voiceSelect.value,
+                    (stage, pct) => {
+                        status.textContent = stage;
+                        progress.style.width = `${pct}%`;
+                    }
+                );
+
+                displayResults(suiteResults);
+            } catch (error) {
+                status.textContent = `Error: ${error.message}`;
+            } finally {
+                runBtn.disabled = false;
+            }
+        });
+
+        function displayResults(suite) {
+            // Summary
+            document.getElementById('summaryCard').style.display = 'block';
+            document.getElementById('avgImprovement').textContent = `${suite.summary.avgTTFAReduction.toFixed(0)}ms`;
+            document.getElementById('avgPercent').textContent = `${suite.summary.avgTTFAReductionPercent.toFixed(1)}%`;
+
+            // Results table
+            document.getElementById('resultsCard').style.display = 'block';
+            const tbody = document.getElementById('resultsBody');
+            tbody.innerHTML = suite.results.map(r => `
+                <tr>
+                    <td>${r.name}</td>
+                    <td>${r.wordCount}</td>
+                    <td>${r.streaming.timeToFirstAudio.toFixed(0)}ms</td>
+                    <td>${r.batch.totalTime.toFixed(0)}ms</td>
+                    <td style="color: var(--success);">${r.improvement.ttfaReductionPercent.toFixed(1)}%</td>
+                </tr>
+            `).join('');
+
+            // Export
+            document.getElementById('exportCard').style.display = 'block';
+            document.getElementById('markdown').textContent = formatResultsMarkdown(suite);
+
+            status.textContent = 'Benchmarks complete!';
+            progress.style.width = '100%';
+        }
+
+        document.getElementById('copyMd').addEventListener('click', () => {
+            if (suiteResults) {
+                navigator.clipboard.writeText(formatResultsMarkdown(suiteResults));
+                alert('Markdown copied to clipboard!');
+            }
+        });
+
+        document.getElementById('copyJson').addEventListener('click', () => {
+            if (suiteResults) {
+                navigator.clipboard.writeText(exportResultsJSON(suiteResults));
+                alert('JSON copied to clipboard!');
+            }
+        });
+    </script>
+</body>
+</html>
